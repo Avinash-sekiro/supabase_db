@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .student-info {
+            margin-bottom: 20px;
+        }
+
+        .student-info h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .student-info p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="student-info">
+            <h1 id="studentName">Loading...</h1>
+            <p id="studentId"></p>
+            <p>Roll Number: <span id="studentAge"></span></p>
+            <p>Section ID: <span id="studentGrade"></span></p>
+        </div>
+        <a href="index.html" class="back-button">Back to List</a>
+    </div>
+
+    <script>
+        // Supabase API configuration
+        const SUPABASE_URL = 'https://cqrrrufgpgpcnhbddeyy.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxcnJydWZncGdwY25oYmRkZXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyNzE5NTcsImV4cCI6MjA1Njg0Nzk1N30.FWfeIJ5sKsxCnREt98YE4MXE8uaHBFPcT2HuuNPly7A';
+
+        // Function to make authenticated API requests
+        async function supabaseRequest(endpoint, options = {}) {
+            const headers = {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            };
+            
+            const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
+                ...options,
+                headers: { ...headers, ...options.headers }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'An error occurred');
+            }
+            
+            return response.json();
+        }
+
+        // Get student ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('id');
+
+        // Fetch and display student details
+        async function loadStudentDetails() {
+            try {
+                const response = await supabaseRequest(`/rest/v1/students?id=eq.${studentId}&select=*`, {
+                    method: 'GET'
+                });
+
+                if (!response || response.length === 0) {
+                    throw new Error('Student not found');
+                }
+
+                const student = response[0];
+                document.getElementById('studentName').textContent = student.student_name;
+                document.getElementById('studentId').textContent = `ID: ${student.id}`;
+                document.getElementById('studentAge').textContent = student.roll_number || 'N/A';
+                document.getElementById('studentGrade').textContent = student.section_id || 'N/A';
+            } catch (error) {
+                console.error('Error loading student details:', error);
+                alert('Failed to load student details: ' + error.message);
+            }
+        }
+
+        // Load student details when the page loads
+        document.addEventListener('DOMContentLoaded', loadStudentDetails);
+    </script>
+</body>
+</html>
