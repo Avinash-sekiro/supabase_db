@@ -11,17 +11,34 @@ async function supabaseRequest(endpoint, options = {}) {
         'Prefer': 'return=minimal'
     };
     
-    const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
-        ...options,
-        headers: { ...headers, ...options.headers }
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'An error occurred');
+    try {
+        const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
+            ...options,
+            headers: { ...headers, ...options.headers }
+        });
+        
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+            if (contentType && contentType.includes('application/json')) {
+                const error = await response.json();
+                throw new Error(error.message || 'Server error occurred');
+            } else {
+                const text = await response.text();
+                throw new Error(text || `HTTP error! status: ${response.status}`);
+            }
+        }
+        
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            return data;
+        } else {
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
+    } catch (error) {
+        console.error('API Request Error:', error);
+        throw new Error(error.message || 'Failed to process the request');
     }
-    
-    return response.json();
 }
 
 // Function to handle user login
