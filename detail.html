@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .student-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .profile-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-photo .placeholder {
+            font-size: 48px;
+            color: #999;
+        }
+
+        .details {
+            flex-grow: 1;
+        }
+
+        .details h1 {
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 28px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .info-item strong {
+            color: #333;
+            display: block;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="student-info">
+            <div class="profile-photo">
+                <div class="placeholder">👤</div>
+            </div>
+            <div class="details">
+                <h1 id="studentName">Loading...</h1>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Student ID</strong>
+                        <span id="studentId">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Section Name</strong>
+                        <span id="sectionName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>School Name</strong>
+                        <span id="schoolName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Address</strong>
+                        <span id="address">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Created Date</strong>
+                        <span id="createdDate">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <a href="index.html" class="back-button">Back to List</a>
+    </div>
+
+    <script>
+        // Supabase API configuration
+        const SUPABASE_URL = 'https://hmqvixspewwahgvbeokk.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtcXZpeHNwZXd3YWhndmJlb2trIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyNzE3MjcsImV4cCI6MjA1Njg0NzcyN30.20Zi0NdD81eKRV06yZ_G2zdeNxeglSNm8uyZzf9aCrg';
+
+        // Function to make authenticated API requests
+        async function supabaseRequest(endpoint, options = {}) {
+            const headers = {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            };
+            
+            try {
+                if (!navigator.onLine) {
+                    throw new Error('No internet connection. Please check your network connectivity.');
+                }
+
+                const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
+                    ...options,
+                    headers: { ...headers, ...options.headers }
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage;
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage = errorJson.message || errorJson.error || errorText;
+                    } catch {
+                        errorMessage = errorText;
+                    }
+                    throw new Error(`Request failed: ${errorMessage} (Status: ${response.status})`);
+                }
+                
+                return response.headers.get('content-type')?.includes('application/json')
+                    ? await response.json()
+                    : null;
+            } catch (error) {
+                console.error('API Request Error:', error);
+                throw new Error(error.message || 'Failed to process the request');
+            }
+        }
+
+        // Format date function
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Get student ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('id');
+
+        // Fetch and display student details
+        async function loadStudentDetails() {
+            try {
+                const response = await supabaseRequest(`/rest/v1/students?id=eq.${studentId}&select=*`, {
+                    method: 'GET'
+                });
+
+                if (!response || response.length === 0) {
+                    throw new Error('Student not found');
+                }
+
+                const student = response[0];
+                document.getElementById('studentName').textContent = student.student_name || 'N/A';
+                document.getElementById('studentId').textContent = student.id || 'N/A';
+                document.getElementById('sectionName').textContent = 'Loading...';
+                document.getElementById('schoolName').textContent = 'Loading...';
+                document.getElementById('address').textContent = 'Loading...';
+                document.getElementById('createdDate').textContent = formatDate(student.created_at);
+
+                // Fetch section and school details separately
+                if (student.section_id) {
+                    const sectionResponse = await supabaseRequest(`/rest/v1/sections?id=eq.${student.section_id}&select=*,schools(name,address)`, {
+                        method: 'GET'
+                    });
+                    
+                    if (sectionResponse && sectionResponse.length > 0) {
+                        const section = sectionResponse[0];
+                        document.getElementById('sectionName').textContent = section.section_name || 'N/A';
+                        document.getElementById('schoolName').textContent = section.schools?.name || 'N/A';
+                        document.getElementById('address').textContent = section.schools?.address || 'N/A';
+                    }
+                }
+
+                // If there's a profile photo URL
+                if (student.profile_photo_url) {
+                    const photoContainer = document.querySelector('.profile-photo');
+                    photoContainer.innerHTML = `<img src="${student.profile_photo_url}" alt="${student.student_name}'s photo">`;
+                }
+            } catch (error) {
+                console.error('Error loading student details:', error);
+                alert('Failed to load student details: ' + error.message);
+            }
+        }
+
+        // Load student details when the page loads
+        document.addEventListener('DOMContentLoaded', loadStudentDetails);
+    </script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Student Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #87CEEB 0%, #4682B4 100%);
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        label {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            background-color: white;
+            padding: 0 0.4rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .form-group input:focus + label,
+        .form-group input:not(:placeholder-shown) + label {
+            top: 0;
+            transform: translateY(-50%) scale(0.9);
+            color: #4CAF50;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .error-message {
+            color: #ff0000;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        .password-change-section {
+            margin-top: 1rem;
+            display: none;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .password-change-toggle {
+            color: #4CAF50;
+            text-decoration: underline;
+            cursor: pointer;
+            text-align: center;
+            margin-top: 1rem;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <input type="text" id="username" placeholder=" " required>
+                <label for="username">Username</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" placeholder=" " required>
+                <label for="password">Password</label>
+            </div>
+            <button type="submit">Login</button>
+            <div id="errorMessage" class="error-message"></div>
+        </form>
+
+        <span class="password-change-toggle" onclick="togglePasswordChange()">Change Password</span>
+
+        <form id="passwordChangeForm" class="password-change-section">
+            <div class="form-group">
+                <input type="password" id="currentPassword" placeholder=" " required>
+                <label for="currentPassword">Current Password</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="newPassword" placeholder=" " required>
+                <label for="newPassword">New Password</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="confirmPassword" placeholder=" " required>
+                <label for="confirmPassword">Confirm New Password</label>
+            </div>
+            <button type="submit">Change Password</button>
+            <div id="passwordChangeError" class="error-message"></div>
+        </form>
+    </div>
+
+    <script>
+        // Check if user is already logged in
+        if (localStorage.getItem('isAuthenticated')) {
+            window.location.href = 'index.html';
+        }
+
+        // Default credentials
+        const DEFAULT_USERNAME = 'admin';
+        let currentPassword = localStorage.getItem('currentPassword') || 'admin';
+
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (username === DEFAULT_USERNAME && password === currentPassword) {
+                localStorage.setItem('isAuthenticated', 'true');
+                window.location.href = 'index.html';
+            } else {
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = 'Invalid username or password';
+            }
+        });
+
+        // Toggle password change form
+        function togglePasswordChange() {
+            const passwordChangeForm = document.getElementById('passwordChangeForm');
+            passwordChangeForm.style.display = passwordChangeForm.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Handle password change form submission
+        document.getElementById('passwordChangeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const currentPasswordInput = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorMessage = document.getElementById('passwordChangeError');
+            errorMessage.style.display = 'block';
+            errorMessage.style.color = '#ff0000';
+
+            if (currentPasswordInput !== currentPassword) {
+                errorMessage.textContent = 'Current password is incorrect';
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                errorMessage.textContent = 'New password must be at least 6 characters long';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errorMessage.textContent = 'New passwords do not match';
+                return;
+            }
+
+            // Update the password
+            currentPassword = newPassword;
+            localStorage.setItem('currentPassword', newPassword);
+            errorMessage.style.color = '#4CAF50';
+            errorMessage.textContent = 'Password updated successfully';
+
+            // Reset form
+            this.reset();
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+                togglePasswordChange();
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
