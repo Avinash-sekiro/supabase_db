@@ -255,16 +255,17 @@
         }
 
         .modal-overlay {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100vh;
+            height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
             opacity: 0;
-            transition: opacity 0.3s ease-out;
+            transition: opacity 0.3s ease;
         }
 
         .modal-overlay.active {
@@ -272,24 +273,19 @@
         }
 
         .add-record-form {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.7);
             background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            width: 90%;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
             max-width: 500px;
-            z-index: 1001;
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
         }
 
         .add-record-form.active {
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 1;
+            transform: translateY(0);
         }
 
         .close-button {
@@ -386,6 +382,29 @@
                         <input type="number" id="section_id" required>
                     </div>
                     <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Student Modal -->
+        <div class="modal-overlay" id="editModalOverlay" style="display: none;">
+            <div class="add-record-form" id="editRecordForm">
+                <button class="close-button" id="editCloseButton">×</button>
+                <h2>Edit Student</h2>
+                <form id="editStudentForm">
+                    <div class="form-group">
+                        <label for="edit_name">Student Name:</label>
+                        <input type="text" id="edit_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_roll_number">Roll Number:</label>
+                        <input type="text" id="edit_roll_number">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_section_id">Section ID:</label>
+                        <input type="number" id="edit_section_id" required>
+                    </div>
+                    <button type="submit">Update</button>
                 </form>
             </div>
         </div>

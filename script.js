@@ -10,81 +10,24 @@ async function supabaseRequest(endpoint, options = {}) {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
     };
-    
+
     try {
         const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
             ...options,
             headers: { ...headers, ...options.headers }
         });
-        
-        const contentType = response.headers.get('content-type');
+
         if (!response.ok) {
-            if (contentType && contentType.includes('application/json')) {
-                const error = await response.json();
-                throw new Error(error.message || 'Server error occurred');
-            } else {
-                const text = await response.text();
-                throw new Error(text || `HTTP error! status: ${response.status}`);
-            }
+            const errorMessage = await response.text();
+            throw new Error(errorMessage || `HTTP error! status: ${response.status}`);
         }
-        
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            return data;
-        } else {
-            const text = await response.text();
-            return text ? JSON.parse(text) : null;
-        }
+
+        return response.headers.get('content-type')?.includes('application/json')
+            ? await response.json()
+            : null;
     } catch (error) {
         console.error('API Request Error:', error);
         throw new Error(error.message || 'Failed to process the request');
-    }
-}
-
-// Function to handle user login
-async function login(email, password) {
-    try {
-        const response = await supabaseRequest('/auth/v1/token?grant_type=password', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-        });
-        return response;
-    } catch (error) {
-        console.error('Error logging in:', error.message);
-        throw error;
-    }
-}
-
-// Function to handle user signup
-async function signup(email, password) {
-    try {
-        const response = await supabaseRequest('/auth/v1/signup', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-        });
-        return response;
-    } catch (error) {
-        console.error('Error signing up:', error.message);
-        throw error;
-    }
-}
-
-// Function to show/hide the add record form
-function showAddForm() {
-    const overlay = document.getElementById('modalOverlay');
-    const form = document.querySelector('.add-record-form');
-    if (overlay.style.display === 'block') {
-        overlay.classList.remove('active');
-        form.classList.remove('active');
-        setTimeout(() => {
-            overlay.style.display = 'none';
-        }, 300);
-    } else {
-        overlay.style.display = 'block';
-        setTimeout(() => {
-            overlay.classList.add('active');
-            form.classList.add('active');
-        }, 10);
     }
 }
 
@@ -105,18 +48,8 @@ async function refreshData() {
 
 // Function to display records in the table
 function displayRecords(records) {
-    console.log('Displaying records:', records);
     const tbody = document.getElementById('recordsBody');
-    if (!tbody) {
-        console.error('Records body element not found');
-        return;
-    }
     tbody.innerHTML = '';
-
-    if (!Array.isArray(records)) {
-        console.error('Records is not an array:', records);
-        return;
-    }
 
     records.forEach(record => {
         const tr = document.createElement('tr');
@@ -133,48 +66,87 @@ function displayRecords(records) {
     });
 }
 
-// Function to handle form submission
-async function handleSubmit(event) {
+// Function to close edit form
+function closeEditForm() {
+    const overlay = document.getElementById('editModalOverlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 300);
+}
+
+// Function to handle edit form submission
+async function handleEditSubmit(event) {
     event.preventDefault();
-    
-    const name = document.getElementById('name').value;
-    const roll_number = document.getElementById('roll_number').value;
-    const section_id = document.getElementById('section_id').value;
-    
+
+    const id = event.target.dataset.id; // Retrieve student ID stored in the form dataset
+
+    const updatedData = {
+        student_name: document.getElementById('edit_name').value.trim(),
+        roll_number: document.getElementById('edit_roll_number').value.trim(),
+        section_id: parseInt(document.getElementById('edit_section_id').value) || null
+    };
+
     try {
-        await supabaseRequest('/rest/v1/students', {
-            method: 'POST',
-            body: JSON.stringify({
-                student_name: name,
-                roll_number: roll_number,
-                section_id: section_id
-            })
+        await supabaseRequest(`/rest/v1/students?id=eq.${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(updatedData)
         });
-        
-        showAddForm(); // Close the form
-        refreshData(); // Refresh the table
+
+        closeEditForm();
+        refreshData();
     } catch (error) {
-        console.error('Error adding record:', error);
-        alert(`Failed to add record: ${error.message}`);
+        console.error('Error updating record:', error);
+        alert(`Failed to update record: ${error.message}`);
     }
 }
 
-// Function to edit a record
+// Function to handle edit record
 async function editRecord(id) {
-    // Implementation for editing a record
-    console.log('Edit record:', id);
+    const overlay = document.getElementById('editModalOverlay');
+    const editForm = document.getElementById('editStudentForm');
+
+    try {
+        // Fetch the student data
+        const response = await supabaseRequest(`/rest/v1/students?id=eq.${id}&select=*`, {
+            method: 'GET'
+        });
+
+        if (response.length > 0) {
+            const student = response[0];
+
+            // Populate form fields
+            document.getElementById('edit_name').value = student.student_name;
+            document.getElementById('edit_roll_number').value = student.roll_number || '';
+            document.getElementById('edit_section_id').value = student.section_id || '';
+
+            // Store student ID in form dataset
+            editForm.dataset.id = id;
+
+            // Show the modal
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.style.opacity = '1', 10);
+
+            // Remove previous event listener before adding a new one
+            editForm.removeEventListener('submit', handleEditSubmit);
+            editForm.addEventListener('submit', handleEditSubmit);
+        }
+    } catch (error) {
+        console.error('Error fetching student data:', error);
+        alert(`Failed to fetch student data: ${error.message}`);
+    }
 }
 
 // Function to delete a record
 async function deleteRecord(id) {
     if (!confirm('Are you sure you want to delete this record?')) return;
-    
+
     try {
         await supabaseRequest(`/rest/v1/students?id=eq.${id}`, {
             method: 'DELETE'
         });
-        
-        refreshData(); // Refresh the table
+
+        refreshData();
     } catch (error) {
         console.error('Error deleting record:', error);
         alert(`Failed to delete record: ${error.message}`);
@@ -186,36 +158,61 @@ function showDetailPage(id) {
     window.location.href = `detail.html?id=${id}`;
 }
 
+// Function to show add form modal
+function showAddForm() {
+    const overlay = document.getElementById('addModalOverlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.style.opacity = '1', 10);
+}
+
+// Function to close add form modal
+function closeAddForm() {
+    const overlay = document.getElementById('addModalOverlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 300);
+}
+
+// Function to handle adding a new record
+async function handleAddSubmit(event) {
+    event.preventDefault();
+
+    const newStudent = {
+        student_name: document.getElementById('add_name').value.trim(),
+        roll_number: document.getElementById('add_roll_number').value.trim(),
+        section_id: parseInt(document.getElementById('add_section_id').value) || null
+    };
+
+    try {
+        await supabaseRequest('/rest/v1/students', {
+            method: 'POST',
+            body: JSON.stringify(newStudent)
+        });
+
+        closeAddForm();
+        refreshData();
+    } catch (error) {
+        console.error('Error adding record:', error);
+        alert(`Failed to add record: ${error.message}`);
+    }
+}
+
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded');
-    try {
-        refreshData();
-        // Add event listeners for buttons
-        const addButton = document.getElementById('addButton');
-        const refreshButton = document.getElementById('refreshButton');
-        const closeButton = document.getElementById('closeButton');
-        const studentForm = document.getElementById('studentForm');
+    refreshData();
 
-        if (!addButton || !refreshButton || !closeButton || !studentForm) {
-            throw new Error('Required elements not found');
-        }
-
-        addButton.addEventListener('click', showAddForm);
-        refreshButton.addEventListener('click', refreshData);
-        closeButton.addEventListener('click', showAddForm);
-        studentForm.addEventListener('submit', handleSubmit);
-
-        console.log('Event listeners attached successfully');
-    } catch (error) {
-        console.error('Error during initialization:', error);
-    }
+    // Attach event listeners
+    document.getElementById('addButton').addEventListener('click', showAddForm);
+    document.getElementById('refreshButton').addEventListener('click', refreshData);
+    document.getElementById('closeButton').addEventListener('click', closeAddForm);
+    document.getElementById('editCloseButton').addEventListener('click', closeEditForm);
+    document.getElementById('addStudentForm').addEventListener('submit', handleAddSubmit);
 });
 
 // Make functions available globally
 window.showAddForm = showAddForm;
 window.refreshData = refreshData;
-window.handleSubmit = handleSubmit;
 window.editRecord = editRecord;
 window.deleteRecord = deleteRecord;
 window.showDetailPage = showDetailPage;
